@@ -1,460 +1,752 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  BarChart, Bar, PieChart, Pie, Cell, Legend 
-} from 'recharts';
-import { 
-  Users, Monitor, Activity, Power, Clock, 
-  Smartphone, Layout, AlertCircle, CheckCircle2, Loader2,
-  Circle, ChevronDown, ChevronUp, Eye, MapPin, Layers
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DS Public Analytics Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome untuk Ikon -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jQuery CDN -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-// --- MOCK DATA ---
-const ANALYTICS_DATA = {
-  totalVisitors: 12540,
-  gender: [
-    { name: 'Pria', value: 55 },
-    { name: 'Wanita', value: 45 },
-  ],
-  age: [
-    { category: 'Children', count: 1200 },
-    { category: 'Teen', count: 2500 },
-    { category: 'Adult', count: 4800 },
-    { category: 'Mature', count: 3100 },
-    { category: 'Old', count: 940 },
-  ],
-  emotions: [
-    { type: 'Happy', count: 4500 },
-    { type: 'Neutral', count: 5200 },
-    { type: 'Sad', count: 800 },
-    { type: 'Surprised', count: 2040 },
-  ]
-};
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-// Data Detail Pengunjung & Impression per Konten di Setiap Device
-const DEVICE_VISITOR_DETAILED = [
-  {
-    deviceId: 1,
-    deviceName: 'Terminal 3 - Gate 5',
-    sn: 'DS-AIRPORT-T3-001',
-    contents: [
-      { name: 'Info Penerbangan', visitors: 4560, impressions: 12400, trend: '+15%' },
-      { name: 'Iklan Duty Free', visitors: 2200, impressions: 8500, trend: '+5%' },
-      { name: 'Protokol Keamanan', visitors: 1150, impressions: 4200, trend: '0%' }
-    ]
-  },
-  {
-    deviceId: 2,
-    deviceName: 'Stasiun Gambir - Hall Utama',
-    sn: 'DS-TRAIN-GMR-005',
-    contents: [
-      { name: 'Jadwal Kereta', visitors: 5800, impressions: 15600, trend: '+22%' },
-      { name: 'Promo KAI Access', visitors: 900, impressions: 3100, trend: '+2%' }
-    ]
-  },
-  {
-    deviceId: 3,
-    deviceName: 'Area Keberangkatan Bus',
-    sn: 'DS-BUS-TERM-009',
-    contents: [
-      { name: 'Peta Terminal', visitors: 1800, impressions: 5400, trend: '+8%' },
-      { name: 'Info Cuaca', visitors: 400, impressions: 1200, trend: '-3%' }
-    ]
-  }
-];
+      body {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+      }
 
-const DEVICES = [
-  { 
-    id: 1, 
-    name: 'Terminal 3 - Gate 5', 
-    sn: 'DS-AIRPORT-T3-001', 
-    status: 'online', 
-    currentContent: 'Info Penerbangan',
-    lastChanged: '2024-05-20T08:00:00',
-    uptimePercent: 98.2
-  },
-  { 
-    id: 2, 
-    name: 'Stasiun Gambir - Hall Utama', 
-    sn: 'DS-TRAIN-GMR-005', 
-    status: 'online', 
-    currentContent: 'Jadwal Kereta',
-    lastChanged: '2024-05-20T09:15:00',
-    uptimePercent: 99.5
-  },
-  { 
-    id: 3, 
-    name: 'Area Keberangkatan Bus', 
-    sn: 'DS-BUS-TERM-009', 
-    status: 'offline', 
-    currentContent: '-',
-    lastChanged: '2024-05-20T10:30:00',
-    uptimePercent: 85.0
-  },
-];
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
 
-const DEVICE_UPTIME_DATA = [
-  { name: 'Terminal 3', online: 23.5, offline: 0.5 },
-  { name: 'Stasiun Gambir', online: 23.8, offline: 0.2 },
-  { name: 'Terminal Bus', online: 16.0, offline: 8.0 },
-  { name: 'Area Publik A', online: 21.0, offline: 3.0 },
-];
+      .tab-active {
+        background-color: white !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1),
+          0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        color: #7c3aed !important; /* violet-600 */
+      }
 
-const DEVICE_LOGS = [
-  { id: 1, device: 'Terminal 3 - Gate 5', event: 'Power On', time: '2024-05-20 08:00:12', status: 'success' },
-  { id: 2, device: 'Stasiun Gambir', event: 'Update Konten Baru', time: '2024-05-20 09:15:45', status: 'running' },
-  { id: 3, device: 'Terminal Bus', event: 'Koneksi Terputus', time: '2024-05-20 10:30:00', status: 'error' },
-  { id: 4, device: 'Terminal 3 - Gate 5', event: 'Install Paket Iklan', time: '2024-05-20 11:00:20', status: 'progress' },
-];
+      .chart-container {
+        position: relative;
+        margin: auto;
+        height: 250px;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-900 pb-10">
+    <!-- Header -->
+    <header
+      class="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3 md:px-8 shadow-sm"
+    >
+      <div
+        class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4"
+      >
+        <div
+          class="flex flex-col items-center md:items-start text-center md:text-left"
+        >
+          <h1
+            class="text-lg md:text-xl font-bold flex items-center gap-2 text-slate-800"
+          >
+            <i class="fa-solid fa-layer-group text-violet-600"></i>
+            <span class="truncate">DS Public Analytics</span>
+          </h1>
+          <p
+            class="text-[11px] md:text-sm text-slate-500 font-medium flex items-center gap-2 mt-1 text-left"
+          >
+            <span class="relative flex h-2 w-2">
+              <span
+                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+              ></span>
+              <span
+                class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"
+              ></span>
+            </span>
+            Monitoring Real-time Pengunjung
+          </p>
+        </div>
 
-const App = () => {
-  const [activeTab, setActiveTab] = useState('all');
-  const [currentTime, setCurrentTime] = useState(new Date('2024-05-20T14:00:00'));
+        <!-- Navigasi Tab -->
+        <div
+          class="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto overflow-x-auto no-scrollbar"
+        >
+          <button
+            data-tab="all"
+            class="tab-btn flex-1 md:flex-none px-4 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all whitespace-nowrap capitalize tab-active"
+          >
+            Semua
+          </button>
+          <button
+            data-tab="content"
+            class="tab-btn flex-1 md:flex-none px-4 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all whitespace-nowrap capitalize text-slate-500"
+          >
+            Konten
+          </button>
+          <button
+            data-tab="device"
+            class="tab-btn flex-1 md:flex-none px-4 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all whitespace-nowrap capitalize text-slate-500"
+          >
+            Device
+          </button>
+        </div>
+      </div>
+    </header>
 
-  const getDuration = (startTime) => {
-    const start = new Date(startTime);
-    const diffInMs = currentTime - start;
-    const hours = Math.floor(diffInMs / (1000 * 60 * 60));
-    const minutes = Math.floor((diffInMs % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}j ${minutes}m`;
-  };
-
-  const getEmotionColor = (type) => {
-    switch(type) {
-      case 'Happy': return 'bg-emerald-500';
-      case 'Neutral': return 'bg-slate-400';
-      case 'Sad': return 'bg-rose-500';
-      case 'Surprised': return 'bg-sky-500';
-      default: return 'bg-violet-500';
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-10">
-      {/* Header Responsif */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3 md:px-8 shadow-sm">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex flex-col items-center md:items-start text-center md:text-left">
-            <h1 className="text-lg md:text-xl font-bold flex items-center gap-2 text-slate-800">
-              <Layout className="text-violet-600 shrink-0" size={22} />
-              <span className="truncate">DS Public Analytics</span>
-            </h1>
-            <p className="text-[11px] md:text-sm text-slate-500 font-medium flex items-center gap-2 mt-1">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              Real-time Monitor
-            </p>
+    <main class="max-w-7xl mx-auto px-4 py-6 md:px-8 space-y-6 md:space-y-8">
+      <!-- Quick Stats -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div
+          class="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group"
+        >
+          <div class="flex items-center gap-3 mb-4">
+            <div
+              class="p-2.5 bg-slate-50 rounded-xl group-hover:bg-violet-50 transition-all"
+            >
+              <i class="fa-solid fa-users text-violet-600"></i>
+            </div>
+            <span
+              class="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider"
+              >Total Pengunjung</span
+            >
           </div>
-          
-          {/* Navigasi Tab Mobile-Friendly */}
-          <div className="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto overflow-x-auto no-scrollbar">
-            {['all', 'content', 'device'].map((tab) => (
-              <button 
-                key={tab}
-                onClick={() => setActiveTab(tab)} 
-                className={`flex-1 md:flex-none px-4 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all whitespace-nowrap capitalize ${activeTab === tab ? 'bg-white shadow-sm text-violet-600' : 'text-slate-500 hover:text-slate-700'}`}
+          <div class="flex flex-col text-left">
+            <span
+              class="text-xl md:text-2xl font-black text-slate-800 tracking-tight"
+              >12,540</span
+            >
+            <span
+              class="text-[10px] md:text-[11px] text-emerald-600 font-bold mt-1.5 bg-emerald-50 w-fit px-2 py-0.5 rounded-full"
+              >+12% dari minggu lalu</span
+            >
+          </div>
+        </div>
+
+        <div
+          class="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group"
+        >
+          <div class="flex items-center gap-3 mb-4 text-left">
+            <div
+              class="p-2.5 bg-slate-50 rounded-xl group-hover:bg-emerald-50 transition-all"
+            >
+              <i class="fa-solid fa-desktop text-emerald-600"></i>
+            </div>
+            <span
+              class="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider"
+              >Device Aktif</span
+            >
+          </div>
+          <div class="flex flex-col text-left">
+            <span
+              class="text-xl md:text-2xl font-black text-slate-800 tracking-tight"
+              >18/20</span
+            >
+            <span
+              class="text-[10px] md:text-[11px] text-rose-600 font-bold mt-1.5 bg-rose-50 w-fit px-2 py-0.5 rounded-full"
+              >2 Device Offline</span
+            >
+          </div>
+        </div>
+
+        <div
+          class="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group"
+        >
+          <div class="flex items-center gap-3 mb-4 text-left">
+            <div
+              class="p-2.5 bg-slate-50 rounded-xl group-hover:bg-orange-50 transition-all"
+            >
+              <i class="fa-solid fa-chart-line text-orange-600"></i>
+            </div>
+            <span
+              class="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider text-left"
+              >Uptime Perangkat</span
+            >
+          </div>
+          <div class="flex flex-col text-left">
+            <span
+              class="text-xl md:text-2xl font-black text-slate-800 tracking-tight"
+              >96.4%</span
+            >
+            <span
+              class="text-[10px] md:text-[11px] text-emerald-600 font-bold mt-1.5 bg-emerald-50 w-fit px-2 py-0.5 rounded-full text-left"
+              >Kondisi Optimal</span
+            >
+          </div>
+        </div>
+
+        <div
+          class="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group"
+        >
+          <div class="flex items-center gap-3 mb-4 text-left">
+            <div
+              class="p-2.5 bg-slate-50 rounded-xl group-hover:bg-violet-50 transition-all"
+            >
+              <i class="fa-solid fa-clock text-violet-600"></i>
+            </div>
+            <span
+              class="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider text-left"
+              >Latency Sistem</span
+            >
+          </div>
+          <div class="flex flex-col text-left">
+            <span
+              class="text-xl md:text-2xl font-black text-slate-800 tracking-tight"
+              >1.2s</span
+            >
+            <span
+              class="text-[10px] md:text-[11px] text-violet-600 font-bold mt-1.5 bg-violet-50 w-fit px-2 py-0.5 rounded-full text-left"
+              >Real-time Sync</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Content Analytics -->
+      <div id="section-content" class="tab-content space-y-6">
+        <h2
+          class="text-base md:text-lg font-bold border-l-4 border-violet-600 pl-3 text-slate-800 uppercase tracking-tight text-left"
+        >
+          Analitik Konten
+        </h2>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Demografi -->
+          <div
+            class="lg:col-span-2 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm"
+          >
+            <h3
+              class="text-sm md:text-md font-semibold mb-6 flex items-center gap-2 text-left text-slate-500 uppercase"
+            >
+              <i class="fa-solid fa-users-viewfinder"></i> Demografi Pengunjung
+            </h3>
+            <div class="flex flex-col md:grid md:grid-cols-2 gap-8 h-auto">
+              <div class="chart-container h-64">
+                <canvas id="ageChart"></canvas>
+              </div>
+              <div class="chart-container h-64">
+                <canvas id="genderChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Emosi -->
+          <div
+            class="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm text-left"
+          >
+            <h3
+              class="text-sm md:text-md font-semibold mb-6 flex items-center gap-2 text-slate-500 uppercase text-left"
+            >
+              <i class="fa-solid fa-face-smile"></i> Analisis Emosi
+            </h3>
+            <div id="emotion-bars" class="space-y-5">
+              <!-- Konten diisi oleh JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabel Distribusi -->
+        <div
+          class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden text-left"
+        >
+          <div class="p-4 md:p-6 border-b border-slate-100 bg-slate-50/50">
+            <h3
+              class="text-sm md:text-md font-bold text-slate-800 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-eye text-violet-500"></i>
+              Distribusi Pengunjung & Impression per Lokasi
+            </h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left min-w-[700px]">
+              <thead>
+                <tr
+                  class="bg-slate-50 text-slate-500 text-[10px] md:text-[11px] uppercase tracking-wider font-bold"
+                >
+                  <th class="px-4 md:px-6 py-4">Lokasi Device & SN</th>
+                  <th class="px-4 md:px-6 py-4">Konten</th>
+                  <th class="px-4 md:px-6 py-4 text-right">
+                    Impression (Tayang)
+                  </th>
+                  <th class="px-4 md:px-6 py-4 text-right">
+                    Jangkauan Pengunjung
+                  </th>
+                  <th class="px-4 md:px-6 py-4 text-center">Trend</th>
+                </tr>
+              </thead>
+              <tbody
+                id="distribution-table-body"
+                class="divide-y divide-slate-100"
               >
-                {tab === 'all' ? 'Semua' : tab === 'content' ? 'Konten' : 'Device'}
-              </button>
-            ))}
+                <!-- Data diisi oleh JS -->
+              </tbody>
+            </table>
           </div>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 md:px-8 space-y-6 md:space-y-8">
-        
-        {/* Ringkasan Statistik: 1 kolom di mobile, 2 di tablet, 4 di desktop */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={<Users className="text-violet-600" />} label="Total Pengunjung" value={ANALYTICS_DATA.totalVisitors.toLocaleString()} subValue="+12% dari minggu lalu" />
-          <StatCard icon={<Monitor className="text-emerald-600" />} label="Device Aktif" value="18/20" subValue="2 Device Offline" />
-          <StatCard icon={<Activity className="text-orange-600" />} label="Uptime Perangkat" value="96.4%" subValue="Kondisi Optimal" />
-          <StatCard icon={<Clock className="text-violet-600" />} label="Latency Sistem" value="1.2s" subValue="Real-time Sync" />
+      <!-- Section: Device Analytics -->
+      <div id="section-device" class="tab-content space-y-6 hidden">
+        <h2
+          class="text-base md:text-lg font-bold border-l-4 border-emerald-600 pl-3 text-slate-800 uppercase tracking-tight text-left"
+        >
+          Status Perangkat
+        </h2>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Uptime Chart -->
+          <div
+            class="lg:col-span-2 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm text-left"
+          >
+            <div
+              class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4"
+            >
+              <div>
+                <h3 class="text-sm md:text-md font-semibold text-slate-800">
+                  Histori Operasional (24 Jam)
+                </h3>
+                <p class="text-[10px] md:text-xs text-slate-500">
+                  Status ON/OFF per titik lokasi
+                </p>
+              </div>
+              <div
+                class="flex gap-4 text-[10px] md:text-xs font-bold text-slate-500"
+              >
+                <div class="flex items-center gap-1.5">
+                  <div class="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>
+                  NYALA
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <div class="w-2.5 h-2.5 bg-rose-400 rounded-full"></div>
+                  MATI
+                </div>
+              </div>
+            </div>
+            <div class="chart-container h-64">
+              <canvas id="uptimeChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Logs -->
+          <div
+            class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full overflow-hidden text-left"
+          >
+            <div class="p-4 md:p-5 border-b border-slate-100 bg-slate-50/50">
+              <h3
+                class="font-bold flex items-center gap-2 text-slate-700 text-sm"
+              >
+                <i class="fa-solid fa-list-ul text-slate-400"></i>
+                Event Logs Terkini
+              </h3>
+            </div>
+            <div
+              id="event-logs"
+              class="p-4 md:p-5 overflow-y-auto space-y-6 max-h-[400px] lg:max-h-none"
+            >
+              <!-- Diisi JS -->
+            </div>
+          </div>
         </div>
 
-        {/* --- Bagian Analitik Konten --- */}
-        {(activeTab === 'all' || activeTab === 'content') && (
-          <section className="space-y-6">
-            <h2 className="text-base md:text-lg font-bold border-l-4 border-violet-600 pl-3 text-slate-800 uppercase tracking-tight">Analitik Konten</h2>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Demografi: Stack di mobile */}
-              <div className="lg:col-span-2 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 className="text-sm md:text-md font-semibold mb-6 flex items-center gap-2">
-                  <Users size={18} className="text-slate-400" />
-                  Demografi Pengunjung
-                </h3>
-                <div className="flex flex-col md:grid md:grid-cols-2 gap-8 h-auto md:h-64">
-                  <div className="h-48 md:h-full w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={ANALYTICS_DATA.age}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="category" fontSize={10} tickLine={false} axisLine={false} />
-                        <YAxis fontSize={10} tickLine={false} axisLine={false} />
-                        <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '12px' }} />
-                        <Bar dataKey="count" fill="#8b5cf6" radius={[6, 6, 0, 0]} barSize={24} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  
-                  <div className="h-48 md:h-full w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={ANALYTICS_DATA.gender} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={8} dataKey="value">
-                          {ANALYTICS_DATA.gender.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={index === 0 ? '#8b5cf6' : '#ec4899'} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '12px' }} />
-                        <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{paddingTop: '10px', fontSize: '11px'}} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
+        <!-- Device Cards Grid -->
+        <div
+          id="device-grid"
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5"
+        >
+          <!-- Diisi JS -->
+        </div>
+      </div>
+    </main>
 
-              {/* Emosi */}
-              <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 className="text-sm md:text-md font-semibold mb-6 flex items-center gap-2">
-                  <Activity size={18} className="text-slate-400" />
-                  Analisis Emosi
-                </h3>
-                <div className="space-y-5">
-                  {ANALYTICS_DATA.emotions.map((emotion, idx) => (
-                    <div key={idx}>
-                      <div className="flex justify-between text-xs md:text-sm mb-1.5">
-                        <span className="font-medium text-slate-600">{emotion.type}</span>
-                        <span className="font-bold text-slate-800">{emotion.count.toLocaleString()}</span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                        <div className={`${getEmotionColor(emotion.type)} h-full rounded-full transition-all duration-1000`} style={{ width: `${(emotion.count / 5200) * 100}%` }}></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+    <script>
+      $(document).ready(function () {
+        // --- DATA ---
+        const emotions = [
+          { type: 'Happy', count: 4500, color: 'bg-emerald-500' },
+          { type: 'Neutral', count: 5200, color: 'bg-slate-400' },
+          { type: 'Sad', count: 800, color: 'bg-rose-500' },
+          { type: 'Surprised', count: 2040, color: 'bg-sky-500' },
+        ];
 
-            {/* Tabel Konten: Horizontal scroll di mobile */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-4 md:p-6 border-b border-slate-100 bg-slate-50/50">
-                <h3 className="text-sm md:text-md font-bold text-slate-800 flex items-center gap-2">
-                  <Eye size={18} className="text-violet-500" />
-                  Distribusi Pengunjung & Impression
-                </h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left min-w-[700px]">
-                  <thead>
-                    <tr className="bg-slate-50 text-slate-500 text-[10px] md:text-[11px] uppercase tracking-wider font-bold">
-                      <th className="px-4 md:px-6 py-4">Lokasi & SN</th>
-                      <th className="px-4 md:px-6 py-4">Konten</th>
-                      <th className="px-4 md:px-6 py-4 text-right">Impression</th>
-                      <th className="px-4 md:px-6 py-4 text-right">Jangkauan</th>
-                      <th className="px-4 md:px-6 py-4 text-center">Trend</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {DEVICE_VISITOR_DETAILED.map((device, devIdx) => (
-                      <React.Fragment key={devIdx}>
-                        {device.contents.map((content, conIdx) => (
-                          <tr key={`${devIdx}-${conIdx}`} className="hover:bg-slate-50/80 transition-colors">
-                            {conIdx === 0 && (
-                              <td rowSpan={device.contents.length} className="px-4 md:px-6 py-5 align-top border-r border-slate-50 bg-white">
-                                <div className="flex items-center gap-3">
-                                  <div className="bg-violet-50 text-violet-600 p-2 rounded-lg shrink-0">
-                                    <MapPin size={16} />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="font-bold text-xs md:text-sm text-slate-800 truncate">{device.deviceName}</p>
-                                    <p className="text-[10px] text-slate-400 font-mono truncate">{device.sn}</p>
-                                  </div>
-                                </div>
-                              </td>
-                            )}
-                            <td className="px-4 md:px-6 py-4">
-                              <span className="text-xs md:text-sm font-medium text-slate-700">{content.name}</span>
-                            </td>
-                            <td className="px-4 md:px-6 py-4 text-right">
-                              <span className="text-xs md:text-sm font-bold text-slate-800">{content.impressions.toLocaleString()}</span>
-                            </td>
-                            <td className="px-4 md:px-6 py-4 text-right">
-                              <span className="text-xs md:text-sm font-bold text-violet-600">{content.visitors.toLocaleString()}</span>
-                            </td>
-                            <td className="px-4 md:px-6 py-4 text-center">
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${content.trend.startsWith('+') ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                {content.trend}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        )}
+        const distributionData = [
+          {
+            deviceName: 'Terminal 3 - Gate 5',
+            sn: 'DS-AIRPORT-T3-001',
+            contents: [
+              {
+                name: 'Info Penerbangan',
+                visitors: 4560,
+                impressions: 12400,
+                trend: '+15%',
+              },
+              {
+                name: 'Iklan Duty Free',
+                visitors: 2200,
+                impressions: 8500,
+                trend: '+5%',
+              },
+            ],
+          },
+          {
+            deviceName: 'Stasiun Gambir - Hall',
+            sn: 'DS-TRAIN-GMR-005',
+            contents: [
+              {
+                name: 'Jadwal Kereta',
+                visitors: 5800,
+                impressions: 15600,
+                trend: '+22%',
+              },
+            ],
+          },
+        ];
 
-        {/* --- Bagian Analitik Perangkat --- */}
-        {(activeTab === 'all' || activeTab === 'device') && (
-          <section className="space-y-6 pt-4">
-            <h2 className="text-base md:text-lg font-bold border-l-4 border-emerald-600 pl-3 text-slate-800 uppercase tracking-tight">Status Perangkat</h2>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Chart Operasional */}
-              <div className="lg:col-span-2 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-                  <div>
-                    <h3 className="text-sm md:text-md font-semibold text-slate-800">Histori Operasional (24 Jam)</h3>
-                    <p className="text-[10px] md:text-xs text-slate-500">Status ON/OFF per titik lokasi</p>
-                  </div>
-                  <div className="flex gap-4 text-[10px] md:text-xs font-bold text-slate-500">
-                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div> ON</div>
-                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-rose-400 rounded-full"></div> OFF</div>
-                  </div>
-                </div>
-                
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={DEVICE_UPTIME_DATA} layout="vertical" margin={{ left: 0, right: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
-                      <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" fontSize={10} width={80} tickLine={false} axisLine={false} />
-                      <Tooltip formatter={(value) => `${value} Jam`} contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '12px' }} />
-                      <Bar dataKey="online" stackId="status" fill="#10b981" barSize={14} />
-                      <Bar dataKey="offline" stackId="status" fill="#fb7185" radius={[0, 4, 4, 0]} barSize={14} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+        const devices = [
+          {
+            id: 1,
+            name: 'Terminal 3 - Gate 5',
+            sn: 'DS-AIRPORT-T3-001',
+            status: 'online',
+            content: 'Info Penerbangan',
+            lastChange: '2h 10m',
+          },
+          {
+            id: 2,
+            name: 'Stasiun Gambir - Hall',
+            sn: 'DS-TRAIN-GMR-005',
+            status: 'online',
+            content: 'Jadwal Kereta',
+            lastChange: '14j 45m',
+          },
+          {
+            id: 3,
+            name: 'Terminal Bus Terpadu',
+            sn: 'DS-BUS-TERM-009',
+            status: 'offline',
+            content: '-',
+            lastChange: '4j 20m',
+          },
+        ];
 
-              {/* Logs: Terbatas di mobile agar tidak terlalu panjang */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full overflow-hidden">
-                <div className="p-4 md:p-5 border-b border-slate-100 bg-slate-50/50">
-                  <h3 className="text-sm font-bold flex items-center gap-2 text-slate-700">
-                    <Clock size={16} className="text-slate-400" />
-                    Event Logs
-                  </h3>
-                </div>
-                <div className="p-4 md:p-5 overflow-y-auto space-y-6 max-h-[300px] lg:max-h-none text-left">
-                  {DEVICE_LOGS.map((log) => (
-                    <div key={log.id} className="relative pl-6 border-l-2 border-slate-100 last:border-0 pb-1">
-                      <div className={`absolute -left-[9px] top-0 p-1 rounded-full bg-white border-2 ${getStatusColor(log.status)} shadow-sm`}>
-                        {getStatusIcon(log.status)}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs md:text-sm font-bold text-slate-800 leading-tight">{log.event}</span>
-                        <span className="text-[10px] text-slate-400 mt-0.5">{log.device} • {log.time}</span>
-                        <div className="mt-2 text-left">
-                          <span className={`text-[9px] px-2 py-0.5 rounded-full capitalize font-bold ${getStatusBadge(log.status)}`}>
-                            {log.status === 'progress' ? 'Update In Progress' : log.status === 'running' ? 'Running Update' : log.status}
-                          </span>
+        const logs = [
+          {
+            event: 'Power On',
+            device: 'Terminal 3',
+            time: '08:00:12',
+            status: 'success',
+          },
+          {
+            event: 'Update Konten',
+            device: 'Stasiun Gambir',
+            time: '09:15:45',
+            status: 'running',
+          },
+          {
+            event: 'Koneksi Terputus',
+            device: 'Terminal Bus',
+            time: '10:30:00',
+            status: 'error',
+          },
+          {
+            event: 'Install Paket Iklan',
+            device: 'Terminal 3',
+            time: '11:00:20',
+            status: 'progress',
+          },
+        ];
+
+        // --- TAB SWITCHING ---
+        $('.tab-btn').click(function () {
+          const target = $(this).data('tab');
+
+          // Style switch
+          $('.tab-btn').removeClass('tab-active').addClass('text-slate-500');
+          $(this).addClass('tab-active').removeClass('text-slate-500');
+
+          // Content switch
+          if (target === 'all') {
+            $('.tab-content').removeClass('hidden');
+          } else {
+            $('.tab-content').addClass('hidden');
+            $('#section-' + target).removeClass('hidden');
+          }
+        });
+
+        // --- INITIALIZE UI ---
+
+        // 1. Emotion Bars
+        emotions.forEach((emo) => {
+          const percent = (emo.count / 5200) * 100;
+          $('#emotion-bars').append(`
+                    <div class="text-left">
+                        <div class="flex justify-between text-xs md:text-sm mb-1.5 font-semibold">
+                            <span class="text-slate-600 uppercase tracking-tighter">${
+                              emo.type
+                            }</span>
+                            <span class="text-slate-800">${emo.count.toLocaleString()}</span>
                         </div>
-                      </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                            <div class="${
+                              emo.color
+                            } h-full rounded-full transition-all duration-1000" style="width: ${percent}%"></div>
+                        </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+                `);
+        });
 
-            {/* Kartu Status Device: Grid responsif */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-              {DEVICES.map((dev) => (
-                <div key={dev.id} className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-violet-300 transition-all">
-                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${dev.status === 'online' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-                  
-                  <div className="flex items-start justify-between mb-5">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl shrink-0 ${dev.status === 'online' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                        <Smartphone size={20} />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-xs md:text-sm text-slate-800 truncate">{dev.name}</h4>
-                        <p className="text-[9px] text-slate-400 font-mono mt-0.5">SN: {dev.sn}</p>
-                      </div>
+        // 2. Distribution Table
+        distributionData.forEach((dev) => {
+          dev.contents.forEach((content, idx) => {
+            const row = `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            ${
+                              idx === 0
+                                ? `
+                                <td rowspan="${dev.contents.length}" class="px-4 md:px-6 py-5 align-top border-r border-slate-50 bg-white">
+                                    <div class="flex items-center gap-3">
+                                        <div class="bg-violet-50 text-violet-600 p-2 rounded-lg shrink-0">
+                                            <i class="fa-solid fa-location-dot"></i>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="font-bold text-xs md:text-sm text-slate-800 truncate">${dev.deviceName}</p>
+                                            <p class="text-[10px] text-slate-400 font-mono truncate">${dev.sn}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                            `
+                                : ''
+                            }
+                            <td class="px-4 md:px-6 py-4">
+                                <span class="text-xs md:text-sm font-medium text-slate-700">${
+                                  content.name
+                                }</span>
+                            </td>
+                            <td class="px-4 md:px-6 py-4 text-right">
+                                <span class="text-xs md:text-sm font-bold text-slate-800">${content.impressions.toLocaleString()}</span>
+                            </td>
+                            <td class="px-4 md:px-6 py-4 text-right">
+                                <span class="text-xs md:text-sm font-bold text-violet-600">${content.visitors.toLocaleString()}</span>
+                            </td>
+                            <td class="px-4 md:px-6 py-4 text-center">
+                                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                  content.trend.startsWith('+')
+                                    ? 'bg-emerald-50 text-emerald-600'
+                                    : 'bg-rose-50 text-rose-600'
+                                }">
+                                    ${content.trend}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+            $('#distribution-table-body').append(row);
+          });
+        });
+
+        // 3. Device Log
+        logs.forEach((log) => {
+          const statusColors = {
+            success: 'border-emerald-500 bg-emerald-50 text-emerald-700',
+            error: 'border-rose-500 bg-rose-50 text-rose-700',
+            running: 'border-violet-500 bg-violet-50 text-violet-700',
+            progress: 'border-orange-500 bg-orange-50 text-orange-700',
+          };
+          $('#event-logs').append(`
+                    <div class="relative pl-6 border-l-2 border-slate-100 last:border-0 pb-1">
+                        <div class="absolute -left-[9px] top-0 p-1 rounded-full bg-white border-2 ${
+                          statusColors[log.status].split(' ')[0]
+                        } shadow-sm">
+                            <i class="fa-solid fa-circle text-[6px]"></i>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs md:text-sm font-bold text-slate-800 leading-tight">${
+                              log.event
+                            }</span>
+                            <span class="text-[10px] text-slate-400 mt-0.5">${
+                              log.device
+                            } • ${log.time}</span>
+                            <div class="mt-2 text-left">
+                                <span class="text-[9px] px-2 py-0.5 rounded-full capitalize font-bold ${
+                                  statusColors[log.status]
+                                }">
+                                    ${log.status}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                    <span className={`shrink-0 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase flex items-center gap-1 ${dev.status === 'online' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                      {dev.status}
-                    </span>
-                  </div>
+                `);
+        });
 
-                  <div className="grid grid-cols-2 gap-2 mb-5">
-                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <p className="text-[9px] text-slate-400 uppercase font-bold tracking-tight">Kondisi</p>
-                      <p className="text-xs font-black text-slate-700 mt-1 uppercase truncate">{dev.status === 'online' ? 'NYALA' : 'MATI'}</p>
+        // 4. Device Cards
+        devices.forEach((dev) => {
+          const statusColor =
+            dev.status === 'online' ? 'bg-emerald-500' : 'bg-rose-500';
+          $('#device-grid').append(`
+                    <div class="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-violet-300 transition-all text-left">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 ${statusColor}"></div>
+                        <div class="flex items-start justify-between mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2 rounded-xl shrink-0 ${
+                                  dev.status === 'online'
+                                    ? 'bg-emerald-50 text-emerald-600'
+                                    : 'bg-rose-50 text-rose-600'
+                                }">
+                                    <i class="fa-solid fa-mobile-screen-button text-lg"></i>
+                                </div>
+                                <div class="min-w-0 text-left">
+                                    <h4 class="font-bold text-xs md:text-sm text-slate-800 truncate text-left">${
+                                      dev.name
+                                    }</h4>
+                                    <p class="text-[9px] text-slate-400 font-mono mt-0.5 uppercase">SN: ${
+                                      dev.sn
+                                    }</p>
+                                </div>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase ${
+                              dev.status === 'online'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-rose-100 text-rose-700'
+                            }">
+                                ${dev.status}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-5">
+                            <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                <p class="text-[9px] text-slate-400 uppercase font-bold tracking-tight">Kondisi</p>
+                                <p class="text-xs font-black text-slate-700 mt-1 uppercase truncate">${
+                                  dev.status === 'online' ? 'NYALA' : 'MATI'
+                                }</p>
+                            </div>
+                            <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                <p class="text-[9px] text-slate-400 uppercase font-bold tracking-tight">${
+                                  dev.status === 'online'
+                                    ? 'Uptime'
+                                    : 'Downtime'
+                                }</p>
+                                <p class="text-xs font-black mt-1 truncate ${
+                                  dev.status === 'online'
+                                    ? 'text-emerald-600'
+                                    : 'text-rose-600'
+                                }">${dev.lastChange}</p>
+                            </div>
+                        </div>
+                        <div class="pt-4 border-t border-slate-100">
+                            <div class="flex justify-between items-center gap-2">
+                                <div class="flex items-center gap-1.5 text-slate-400">
+                                    <i class="fa-solid fa-film text-[10px] text-violet-500"></i>
+                                    <span class="text-[10px] font-bold uppercase tracking-tight">Tayang</span>
+                                </div>
+                                <span class="text-xs font-bold text-violet-600 truncate text-right">${
+                                  dev.content
+                                }</span>
+                            </div>
+                        </div>
                     </div>
-                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <p className="text-[9px] text-slate-400 uppercase font-bold tracking-tight">{dev.status === 'online' ? 'Uptime' : 'Downtime'}</p>
-                      <p className={`text-xs font-black mt-1 truncate ${dev.status === 'online' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {getDuration(dev.lastChanged)}
-                      </p>
-                    </div>
-                  </div>
+                `);
+        });
 
-                  <div className="pt-4 border-t border-slate-100">
-                    <div className="flex justify-between items-center gap-2">
-                      <div className="flex items-center gap-1.5 text-slate-400 shrink-0">
-                        <Activity size={12} className="text-violet-500" />
-                        <span className="text-[10px] font-bold uppercase tracking-tight">Tayang</span>
-                      </div>
-                      <span className="text-xs font-bold text-violet-600 truncate text-right">{dev.currentContent}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-      </main>
-    </div>
-  );
-};
+        // --- CHARTS ---
 
-// --- Komponen Pendukung ---
-const StatCard = ({ icon, label, value, subValue }) => (
-  <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group">
-    <div className="flex items-center gap-3 mb-4">
-      <div className="p-2.5 bg-slate-50 rounded-xl group-hover:bg-violet-50 transition-all shrink-0">{icon}</div>
-      <span className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider">{label}</span>
-    </div>
-    <div className="flex flex-col">
-      <span className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">{value}</span>
-      <span className="text-[10px] md:text-[11px] text-emerald-600 font-bold mt-1.5 bg-emerald-50 w-fit px-2 py-0.5 rounded-full">{subValue}</span>
-    </div>
-  </div>
-);
+        // Age Chart
+        new Chart($('#ageChart'), {
+          type: 'bar',
+          data: {
+            labels: ['Children', 'Teen', 'Adult', 'Mature', 'Old'],
+            datasets: [
+              {
+                label: 'Jumlah Pengunjung',
+                data: [1200, 2500, 4800, 3100, 940],
+                backgroundColor: '#8b5cf6',
+                borderRadius: 6,
+              },
+            ],
+          },
+          options: {
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { display: false },
+                ticks: { font: { size: 10 } },
+              },
+              x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+            },
+          },
+        });
 
-const getStatusColor = (status) => {
-  switch(status) {
-    case 'success': return 'border-emerald-500';
-    case 'error': return 'border-rose-500';
-    case 'running': return 'border-violet-500';
-    case 'progress': return 'border-orange-500';
-    default: return 'border-slate-300';
-  }
-};
+        // Gender Chart
+        new Chart($('#genderChart'), {
+          type: 'doughnut',
+          data: {
+            labels: ['Pria', 'Wanita'],
+            datasets: [
+              {
+                data: [55, 45],
+                backgroundColor: ['#8b5cf6', '#ec4899'],
+                borderWidth: 0,
+              },
+            ],
+          },
+          options: {
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { boxWidth: 12, font: { size: 11 } },
+              },
+            },
+            cutout: '70%',
+          },
+        });
 
-const getStatusBadge = (status) => {
-  switch(status) {
-    case 'success': return 'bg-emerald-100 text-emerald-700';
-    case 'error': return 'bg-rose-100 text-rose-700';
-    case 'running': return 'bg-violet-100 text-violet-700';
-    case 'progress': return 'bg-orange-100 text-orange-700';
-    default: return 'bg-slate-100 text-slate-700';
-  }
-};
-
-const getStatusIcon = (status) => {
-  switch(status) {
-    case 'success': return <CheckCircle2 size={10} className="text-emerald-500" />;
-    case 'error': return <AlertCircle size={10} className="text-rose-500" />;
-    case 'running': return <Activity size={10} className="text-violet-500" />;
-    case 'progress': return <Loader2 size={10} className="text-orange-500 animate-spin" />;
-    default: return null;
-  }
-};
-
-export default App;
+        // Uptime Chart
+        new Chart($('#uptimeChart'), {
+          type: 'bar',
+          data: {
+            labels: [
+              'Terminal 3',
+              'Stasiun Gambir',
+              'Terminal Bus',
+              'Area Publik A',
+            ],
+            datasets: [
+              {
+                label: 'Online',
+                data: [23.5, 23.8, 16.0, 21.0],
+                backgroundColor: '#10b981',
+              },
+              {
+                label: 'Offline',
+                data: [0.5, 0.2, 8.0, 3.0],
+                backgroundColor: '#fb7185',
+              },
+            ],
+          },
+          options: {
+            indexAxis: 'y',
+            maintainAspectRatio: false,
+            scales: {
+              x: { stacked: true, display: false },
+              y: {
+                stacked: true,
+                grid: { display: false },
+                ticks: { font: { size: 10 } },
+              },
+            },
+            plugins: { legend: { display: false } },
+          },
+        });
+      });
+    </script>
+  </body>
+</html>
